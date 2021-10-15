@@ -1,3 +1,6 @@
 [submodule "tinycbor"]
 	path = tinycbor
 	url = https://github.com/intel/tinycbor
+[submodule "micro-ecc"]
+	path = micro-ecc
+	url = https://github.com/kmackay/micro-ecc.git
