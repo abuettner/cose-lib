@@ -7,8 +7,6 @@ INCLUDE = -I./tinycbor/src
 INCLUDE += -I./micro-ecc
 INCLUDE += -I./include
 
-INCLUDE += -I/usr/include/openssl -lcrypto
-
 SOURCE += src/*.c
 SOURCE += micro-ecc/*.c
 
