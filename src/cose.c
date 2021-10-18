@@ -2,49 +2,60 @@
 #include "cbor.h"
 #include <stdlib.h>
 
-void cose_init_header(COSE_HEADER *out)
+void cose_init_header(COSE_HEADER *output)
 {
-    out->alg = 0;
-    out->contentType = NULL;
-    out->kidSize = 0;
-    out->iv = NULL;
-    out->ivSize = 0;
+    output->alg = 0;
+    output->contentType = NULL;
+    output->kidSize = 0;
+    output->ivSize = 0;
 }
 
-size_t cose_encode_protected_header(COSE_HEADER input, uint8_t *out)
+int cose_header_size(COSE_HEADER input)
 {
+    int count = 0;
+    if (input.alg != 0)
+        count++;
 
-    uint8_t protectedBuf[128];
-    CborEncoder protectedEncoder, protectedMapEncoder;
-    cbor_encoder_init(&protectedEncoder, protectedBuf, sizeof(protectedBuf), 0);
-    cbor_encoder_create_map(&protectedEncoder, &protectedMapEncoder, 2);
+    if (input.contentType != NULL)
+        count++;
+
+    if (input.kidSize > 0)
+        count++;
+
+    if (input.ivSize > 0)
+        count++;
+
+    return count;
+}
+
+int cose_encode_header(COSE_HEADER input, CborEncoder *encoder)
+{
+    CborEncoder mapEncoder;
+    cbor_encoder_create_map(encoder, &mapEncoder, cose_header_size(input));
 
     // Algorithm
     if (input.alg != 0)
     {
-        cbor_encode_int(&protectedMapEncoder, COSE_HEADER_ALG);
-        cbor_encode_int(&protectedMapEncoder, input.alg);
+        cbor_encode_int(&mapEncoder, COSE_HEADER_ALG);
+        cbor_encode_int(&mapEncoder, input.alg);
     }
     // KID
     if (input.kidSize > 0)
     {
-        cbor_encode_int(&protectedMapEncoder, COSE_HEADER_KID);
-        cbor_encode_byte_string(&protectedMapEncoder, input.kid, input.kidSize);
+        cbor_encode_int(&mapEncoder, COSE_HEADER_KID);
+        cbor_encode_byte_string(&mapEncoder, input.kid, input.kidSize);
     }
 
     // @TODO add other parameters
-    cbor_encoder_close_container(&protectedEncoder, &protectedMapEncoder);
+    cbor_encoder_close_container(encoder, &mapEncoder);
 
-    memmove(out, protectedBuf, cbor_encoder_get_buffer_size(&protectedEncoder, protectedBuf));
-    return cbor_encoder_get_buffer_size(&protectedEncoder, protectedBuf);
+    return 1;
 }
 
-size_t cose_encode_message(const COSE_Message coseMessage, uint8_t *out)
+size_t cose_encode_message(COSE_Message coseMessage, uint8_t *outBuf, int outBufSize)
 {
-
-    uint8_t buf[512];
     CborEncoder encoder, arrayEncoder;
-    cbor_encoder_init(&encoder, buf, sizeof(buf), 0);
+    cbor_encoder_init(&encoder, outBuf, outBufSize, 0);
 
     // Tag
     cbor_encode_tag(&encoder, coseMessage.type);
@@ -61,13 +72,16 @@ size_t cose_encode_message(const COSE_Message coseMessage, uint8_t *out)
 
     // * * * * * Protected * * * * * //
     uint8_t protectedBuf[128];
-    size_t protectedBufSize = cose_encode_protected_header(coseMessage.protectedHeader, protectedBuf);
+    CborEncoder protectedEncoder;
+    cbor_encoder_init(&protectedEncoder, protectedBuf, sizeof(protectedBuf), 0);
+    cose_encode_header(coseMessage.protectedHeader, &protectedEncoder);
+    size_t protectedBufSize = cbor_encoder_get_buffer_size(&protectedEncoder, protectedBuf);
+
     cbor_encode_byte_string(&arrayEncoder, protectedBuf, protectedBufSize);
 
     // * * * * * Unprotected * * * * * //
     CborEncoder unprotectedMapEncoder;
-    cbor_encoder_create_map(&arrayEncoder, &unprotectedMapEncoder, 0);
-    cbor_encoder_close_container(&arrayEncoder, &unprotectedMapEncoder);
+    cose_encode_header(coseMessage.unprotectedHeader, &arrayEncoder);
 
     // * * * * * Payload * * * * * //
     cbor_encode_byte_string(&arrayEncoder, coseMessage.payload, coseMessage.payloadSize);
@@ -79,22 +93,19 @@ size_t cose_encode_message(const COSE_Message coseMessage, uint8_t *out)
     }
 
     cbor_encoder_close_container(&encoder, &arrayEncoder);
-    memmove(out, buf, cbor_encoder_get_buffer_size(&encoder, buf));
-    return cbor_encoder_get_buffer_size(&encoder, buf);
+    return cbor_encoder_get_buffer_size(&encoder, outBuf);
 }
 
-int cose_decode_protected_header(uint8_t *input, size_t inputSize, COSE_HEADER *out)
+int cose_decode_header(CborValue *value, COSE_HEADER *out)
 {
-    CborParser parser;
-    CborValue value, mapContainer;
-    cbor_parser_init(input, inputSize, 0, &parser, &value);
-    if (cbor_value_is_valid(&value))
+    CborValue mapContainer;
+    if (cbor_value_is_valid(value))
     {
-        if (cbor_value_is_map(&value))
+        if (cbor_value_is_map(value))
         {
             size_t mapLength;
-            cbor_value_get_map_length(&value, &mapLength);
-            cbor_value_enter_container(&value, &mapContainer);
+            cbor_value_get_map_length(value, &mapLength);
+            cbor_value_enter_container(value, &mapContainer);
             int key;
             for (int i = 0; i < mapLength; i++)
             {
@@ -127,7 +138,6 @@ int cose_decode_protected_header(uint8_t *input, size_t inputSize, COSE_HEADER *
                     cbor_value_advance(&mapContainer);
                 }
             }
-
             return 1;
         }
     }
@@ -135,7 +145,7 @@ int cose_decode_protected_header(uint8_t *input, size_t inputSize, COSE_HEADER *
 }
 
 int cose_decode_message(uint8_t *input, size_t inputSize, COSE_Message *out)
-{                       
+{
     CborParser parser;
     CborValue value, arrayContainer;
     cbor_parser_init(input, inputSize, 0, &parser, &value);
@@ -158,14 +168,18 @@ int cose_decode_message(uint8_t *input, size_t inputSize, COSE_Message *out)
                     // Protected header
                     if (cbor_value_is_byte_string(&arrayContainer))
                     {
-                        uint8_t *protectedBuf;
+                        uint8_t protectedBuf[128];
                         size_t protectedBufSize;
 
                         cbor_value_calculate_string_length(&arrayContainer, &protectedBufSize);
-                        protectedBuf = (uint8_t *)malloc(sizeof(uint8_t) * protectedBufSize);
 
                         cbor_value_copy_byte_string(&arrayContainer, protectedBuf, &protectedBufSize, NULL);
-                        if(!cose_decode_protected_header(protectedBuf, protectedBufSize, &out->protectedHeader)){
+                        CborParser protectedParser;
+                        CborValue protectedValue;
+                        cbor_parser_init(protectedBuf, protectedBufSize, 0, &protectedParser, &protectedValue);
+
+                        if (!cose_decode_header(&protectedValue, &out->protectedHeader))
+                        {
                             return 0;
                         }
                     }
@@ -175,8 +189,10 @@ int cose_decode_message(uint8_t *input, size_t inputSize, COSE_Message *out)
                     // Unprotected header
                     if (cbor_value_is_map(&arrayContainer))
                     {
-                        // @TODO parse header
-                        //cbor_value_enter_container(&arrayContainer, &out->unprotectedHeader);
+                        if (!cose_decode_header(&arrayContainer, &out->unprotectedHeader))
+                        {
+                            return 0;
+                        }
                     }
                     cbor_value_advance(&arrayContainer);
 
@@ -184,7 +200,6 @@ int cose_decode_message(uint8_t *input, size_t inputSize, COSE_Message *out)
                     if (cbor_value_is_byte_string(&arrayContainer))
                     {
                         cbor_value_calculate_string_length(&arrayContainer, &out->payloadSize);
-                        out->payload = (uint8_t *)malloc(sizeof(uint8_t) * out->payloadSize);
                         cbor_value_copy_byte_string(&arrayContainer, out->payload, &out->payloadSize, NULL);
                     }
                     cbor_value_advance(&arrayContainer);

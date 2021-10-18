@@ -21,19 +21,23 @@ int main()
     COSE_Message message1;
     cose_sign1_sign("to be signed", 12, private1, curve, &message1);
 
+    message1.unprotectedHeader.alg = -5;
+    memmove(message1.unprotectedHeader.kid, "hello", 5);
+    message1.unprotectedHeader.kidSize = 5;
+
     // Encode message
     uint8_t messageBuf[512];
-    size_t messageBufSize = cose_encode_message(message1, messageBuf);
-    printf("Encoded: \n");
+    size_t messageBufSize = cose_encode_message(message1, messageBuf, sizeof(messageBuf));
+    printf("Encoded: ");
     printBufferToHex(stdout, messageBuf, messageBufSize);
 
     // Decode message
     COSE_Message message2;
     cose_init_header(&message2.protectedHeader);
-    printf("\nParse: %s\n", cose_decode_message(messageBuf, messageBufSize, &message2) ? "true" : "false");
+    printf("Parse: %s\n", cose_decode_message(messageBuf, messageBufSize, &message2) ? "true" : "false");
 
     // Verify signature
-    printf("\nVerify: %s\n", cose_sign1_verify(&message2, public1, curve) ? "true" : "false");
+    printf("Verify: %s\n", cose_sign1_verify(&message2, public1, curve) ? "true" : "false");
 
     return 0;
 }

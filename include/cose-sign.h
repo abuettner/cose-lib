@@ -6,9 +6,6 @@
 #include "cose.h"
 #include "uECC.h"
 
-
-size_t cose_create_sig_struct(uint8_t *, size_t, uint8_t *, size_t, uint8_t *);
-
 /**
  * This function creates a sign1 cose message.
  * @param payload payload to be signed
@@ -21,7 +18,7 @@ size_t cose_create_sig_struct(uint8_t *, size_t, uint8_t *, size_t, uint8_t *);
 void cose_sign1_sign(uint8_t *, size_t, const uint8_t *, uECC_Curve, COSE_Message *);
 
 /**
- * This message verifies
+ * This message verifies a sign1 cose message.
  * @param coseMessage signed message wrapped in a sign1 cose message
  * @param publicKey private key for signing
  * @param curve curve used
