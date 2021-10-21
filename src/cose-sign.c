@@ -22,11 +22,10 @@ void cose_sign1_sign(uint8_t *payload, size_t payloadSize, const uint8_t *privat
     memmove(coseMessage->protectedHeader.kid, "kid2", 4);
     coseMessage->protectedHeader.kidSize = 4;
 
-    uint8_t protectedBuf[128];
     CborEncoder protectedEncoder;
-    cbor_encoder_init(&protectedEncoder, protectedBuf, sizeof(protectedBuf), 0);
+    cbor_encoder_init(&protectedEncoder, coseMessage->protectedHeaderRaw, sizeof(coseMessage->protectedHeaderRaw), 0);
     cose_encode_header(coseMessage->protectedHeader, &protectedEncoder);
-    size_t protectedBufSize = cbor_encoder_get_buffer_size(&protectedEncoder, protectedBuf);
+    coseMessage->protectedHeaderRawSize = cbor_encoder_get_buffer_size(&protectedEncoder, coseMessage->protectedHeaderRaw);
 
     // * * * * * Unprotected * * * * * //
     cose_init_header(&coseMessage->unprotectedHeader);
@@ -36,8 +35,8 @@ void cose_sign1_sign(uint8_t *payload, size_t payloadSize, const uint8_t *privat
     coseMessage->payloadSize = payloadSize;
 
     // * * * * * Signature * * * * * //
-    uint8_t sig_struct[10 + protectedBufSize + coseMessage->payloadSize];
-    size_t sig_struct_size = cose_create_sig_struct(protectedBuf, protectedBufSize, coseMessage->payload, coseMessage->payloadSize, sig_struct);
+    uint8_t sig_struct[10 + coseMessage->protectedHeaderRawSize + coseMessage->payloadSize];
+    size_t sig_struct_size = cose_create_sig_struct(coseMessage->protectedHeaderRaw, coseMessage->protectedHeaderRawSize, coseMessage->payload, coseMessage->payloadSize, sig_struct);
     uECC_sign(privateKey, sig_struct, sig_struct_size, coseMessage->signature, curve);
 }
 
@@ -48,15 +47,12 @@ int cose_sign1_verify(COSE_Message *coseMessage, const uint8_t *publicKey, uECC_
         // @TODO use different algorithms
 
         // Verify signature
-        uint8_t protectedBuf[128];
-        CborEncoder protectedEncoder;
-        cbor_encoder_init(&protectedEncoder, protectedBuf, sizeof(protectedBuf), 0);
-        cose_encode_header(coseMessage->protectedHeader, &protectedEncoder);
-        size_t protectedBufSize = cbor_encoder_get_buffer_size(&protectedEncoder, protectedBuf);
-        uint8_t sig_struct[10 + protectedBufSize + coseMessage->payloadSize];
-        size_t sig_struct_size = cose_create_sig_struct(protectedBuf, protectedBufSize, coseMessage->payload, coseMessage->payloadSize, sig_struct);
+        uint8_t sig_struct[10 + coseMessage->protectedHeaderRawSize + coseMessage->payloadSize];
+        size_t sig_struct_size = cose_create_sig_struct(coseMessage->protectedHeaderRaw, coseMessage->protectedHeaderRawSize, coseMessage->payload, coseMessage->payloadSize, sig_struct);
+        printf("\nIt works: sig struct\n");
+        printBufferToHex(stdout, coseMessage->protectedHeaderRaw, coseMessage->protectedHeaderRawSize);
         return uECC_verify(publicKey, sig_struct, sig_struct_size, coseMessage->signature, curve);
     }
-
+    printf("\nError\n");
     return 0;
 }

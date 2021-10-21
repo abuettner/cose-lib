@@ -28,6 +28,8 @@ typedef struct
 typedef struct
 {
     CborTag type;
+    uint8_t protectedHeaderRaw[128];
+    size_t protectedHeaderRawSize;
     COSE_HEADER protectedHeader;
     COSE_HEADER unprotectedHeader;
     uint8_t payload[128];

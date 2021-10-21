@@ -5,12 +5,14 @@
 #include <cose.h>
 #include <cose-sign.h>
 #include <cose-lib.h>
+#include <cose-go.h>
 
 #include "uECC.h"
 #include <openssl/sha.h>
 
 int main()
 {
+
     // Generate key pair
     const struct uECC_Curve_t *curve = uECC_secp256r1();
     uint8_t private1[32];
@@ -39,5 +41,6 @@ int main()
     // Verify signature
     printf("Verify: %s\n", cose_sign1_verify(&message2, public1, curve) ? "true" : "false");
 
+    printf("\n\n");
     return 0;
 }

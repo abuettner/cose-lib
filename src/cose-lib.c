@@ -12,7 +12,7 @@ void printBufferToHex(FILE *f, uint8_t *buf, size_t count)
     int i;
     for (i = 0; i < count; i++)
     {
-        fprintf(f, "%02X", buf[i]);
+        fprintf(f, "%02x", buf[i]);
     }
     fprintf(f, "\n");
 }

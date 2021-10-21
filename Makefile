@@ -10,14 +10,25 @@ INCLUDE += -I./include
 SOURCE += src/*.c
 SOURCE += micro-ecc/*.c
 
+MAIN += src/main/main.c
+
+TEST += src/test/test.c
 
 
 
-all: cbor cose-lib
+
+all: cbor main test cose-shared
 	
+cose-shared:
+	$(CC) -Wall -fPIC -c $(SOURCE) $(INCLUDE)
+	$(CC) -shared -o lib/libcose.so ./*.o $(LIBCBOR)
+	rm ./*.o
 
-cose-lib: 
-	mkdir -p build && $(CC) -g -o build/cose-lib $(SOURCE) $(LIBCBOR) $(INCLUDE)
+test: 
+	mkdir -p build && $(CC) -g -o build/test $(SOURCE) $(TEST) $(LIBCBOR) $(INCLUDE)
+
+main: 
+	mkdir -p build && $(CC) -g -o build/main $(SOURCE) $(MAIN) $(LIBCBOR) $(INCLUDE)
 	
 cbor:
 	cd tinycbor/ && $(MAKE) clean && $(MAKE) LDFLAGS='' -j8
