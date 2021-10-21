@@ -17,15 +17,12 @@ TEST += src/test/test.c
 
 
 
-all: cbor main test cose-shared
+all: cbor main cose-shared
 	
 cose-shared:
 	$(CC) -Wall -fPIC -c $(SOURCE) $(INCLUDE)
 	$(CC) -shared -o lib/libcose.so ./*.o $(LIBCBOR)
 	rm ./*.o
-
-test: 
-	mkdir -p build && $(CC) -g -o build/test $(SOURCE) $(TEST) $(LIBCBOR) $(INCLUDE)
 
 main: 
 	mkdir -p build && $(CC) -g -o build/main $(SOURCE) $(MAIN) $(LIBCBOR) $(INCLUDE)
