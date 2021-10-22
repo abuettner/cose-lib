@@ -126,7 +126,6 @@ int cose_decode_header(CborValue *value, COSE_HEADER *out)
     {
         if (cbor_value_is_map(value))
         {
-            printf("Test 2\n");
             size_t mapLength;
             cbor_value_get_map_length(value, &mapLength);
             cbor_value_enter_container(value, &mapContainer);
@@ -143,8 +142,6 @@ int cose_decode_header(CborValue *value, COSE_HEADER *out)
                         if (cbor_value_is_integer(&mapContainer))
                         {
                             cbor_value_get_int(&mapContainer, &out->alg);
-                            printf("\nAlg: %d", out->alg);
-                            printf("\n");
                         }
                         break;
                     case COSE_HEADER_KID:
@@ -155,9 +152,6 @@ int cose_decode_header(CborValue *value, COSE_HEADER *out)
                             cbor_value_calculate_string_length(&mapContainer, &kidSize);
                             cbor_value_copy_byte_string(&mapContainer, kid, &kidSize, NULL);
 
-                            printf("\nKid: ");
-                            printBufferToHex(stdout, kid, kidSize);
-                            printf("\n");
                             memmove(out->kid, kid, kidSize);
                             out->kidSize = kidSize;
                         }
@@ -204,9 +198,6 @@ int cose_decode_message(uint8_t *input, size_t inputSize, COSE_Message *out)
                         CborParser protectedParser;
                         CborValue protectedValue;
                         cbor_parser_init(out->protectedHeaderRaw, out->protectedHeaderRawSize, 0, &protectedParser, &protectedValue);
-
-                        printf("Protected raw 1: ");
-                        printBufferToHex(stdout, out->protectedHeaderRaw, out->protectedHeaderRawSize);
                        
                         if (!cose_decode_header(&protectedValue, &out->protectedHeader))
                         {

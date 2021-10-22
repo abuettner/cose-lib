@@ -73,10 +73,7 @@ int cose_sign1_verify(COSE_Message *coseMessage, const uint8_t *publicKey, uECC_
         // Verify signature
         uint8_t sig_struct[10 + coseMessage->protectedHeaderRawSize + coseMessage->payloadSize];
         size_t sig_struct_size = cose_create_sig_struct(coseMessage->protectedHeaderRaw, coseMessage->protectedHeaderRawSize, coseMessage->payload, coseMessage->payloadSize, sig_struct);
-        printf("\nIt works: sig struct\n");
-        printBufferToHex(stdout, coseMessage->protectedHeaderRaw, coseMessage->protectedHeaderRawSize);
         return uECC_verify(publicKey, sig_struct, sig_struct_size, coseMessage->signature, curve);
     }
-    printf("\nError\n");
     return 0;
 }
