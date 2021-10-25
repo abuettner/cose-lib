@@ -24,7 +24,6 @@
 
 #include "cose-sign.h"
 #include "cose.h"
-#include "cose-lib.h"
 #include <cbor.h>
 #include <stdio.h>
 
