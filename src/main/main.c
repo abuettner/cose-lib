@@ -42,6 +42,19 @@ int main()
     uint8_t public1[64];
     uECC_make_key(public1, private1, curve);
 
+    // shared secret test
+    uint8_t private2[32];
+    uint8_t public2[64];
+    uECC_make_key(public2, private2, curve);
+
+    uint8_t shared1[32], shared2[32];
+    uECC_shared_secret(public2, private1, shared1, curve);
+    uECC_shared_secret(public1, private2, shared2, curve);
+    printf("Shared 1: ");
+    printBufferToHex(stdout, shared1,32);
+    printf("Shared 2: ");
+    printBufferToHex(stdout, shared2,32);
+
     // Sign message
     COSE_Message message1;
     cose_sign1_sign("to be signed", 12, private1, curve, &message1);

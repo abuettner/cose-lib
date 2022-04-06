@@ -4,3 +4,12 @@
 [submodule "micro-ecc"]
 	path = micro-ecc
 	url = https://github.com/kmackay/micro-ecc.git
+[submodule "CycloneCRYPTO"]
+	path = CycloneCRYPTO
+	url = https://github.com/Oryx-Embedded/CycloneCRYPTO.git
+[submodule "Common"]
+	path = Common
+	url = https://github.com/Oryx-Embedded/Common.git
+[submodule "mbedtls"]
+	path = mbedtls
+	url = https://github.com/ARMmbed/mbedtls.git

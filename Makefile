@@ -1,7 +1,8 @@
 
 
 # tinycbor
-LIBCBOR = tinycbor/lib/libtinycbor.a
+LIB = -L./tinycbor/lib
+LIB += -L./mbedtls/library
 
 INCLUDE = -I./tinycbor/src
 INCLUDE += -I./micro-ecc
@@ -17,18 +18,21 @@ TEST += src/test/test.c
 
 
 
-all: cbor main cose-shared
+all: lib-cbor lib-mbedtls main lib-cose
 	
-cose-shared:
+lib-cose:
 	$(CC) -Wall -fPIC -c $(SOURCE) $(INCLUDE)
-	$(CC) -shared -o lib/libcose.so ./*.o $(LIBCBOR)
+	$(CC) -shared -o lib/libcose.so ./*.o $(LIB) -ltinycbor -lmbedcrypto
 	rm ./*.o
 
 main: 
-	mkdir -p build && $(CC) -g -o build/main $(SOURCE) $(MAIN) $(LIBCBOR) $(INCLUDE)
+	mkdir -p build && $(CC) -g -o build/main $(SOURCE) $(MAIN) $(LIB) $(INCLUDE) -ltinycbor -lmbedcrypto
 	
-cbor:
-	cd tinycbor/ && $(MAKE) clean && $(MAKE) LDFLAGS='' -j8
-	
+lib-cbor:
+	cd tinycbor/ && $(MAKE) clean && $(MAKE) LDFLAGS='' -j8 lib/libtinycbor.a
+
+lib-mbedtls:
+	cd mbedtls/ && $(MAKE) lib
+
 clean:
-	cd tinycbor && $(MAKE) clean && cd .. && rm -rf build	
+	cd tinycbor && $(MAKE) clean && cd .. && cd mbedtls && $(MAKE) clean && cd .. && rm -rf build	
