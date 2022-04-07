@@ -6,6 +6,7 @@ LIB += -L./mbedtls/library
 
 INCLUDE = -I./tinycbor/src
 INCLUDE += -I./micro-ecc
+INCLUDE += -I./mbedtls/include
 INCLUDE += -I./include
 
 SOURCE += src/*.c
