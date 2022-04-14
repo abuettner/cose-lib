@@ -14,7 +14,7 @@ This project is work in progress. Only few cryptographic algorithms are currentl
 * Further encryption algorithms as considered in [`RFC8152`](https://www.rfc-editor.org/rfc/rfc8152.html)
 * COSE Sign1 messages (single recipient)
 * COSE Sign messages (multiple recipients)
-* Further signatrue algorithms as considered in [`RFC8152`](https://www.rfc-editor.org/rfc/rfc8152.html)
+* Further signature algorithms as considered in [`RFC8152`](https://www.rfc-editor.org/rfc/rfc8152.html)
 * COSE Key structures
 * Key exchange
 * ...
