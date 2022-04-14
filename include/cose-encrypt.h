@@ -42,6 +42,6 @@ typedef enum
     COSE_ENCRYPT_ALG_AES_CCM_64_128_256 = 33
 } COSE_ENCRYPT_ALG;
 
-ssize_t cose_encrypt0(COSE_ENCRYPT_ALG alg);
-
+int cose_encrypt0_encrypt(COSE_ENCRYPT_ALG alg, uint8_t* payload, size_t payloadSize, uint8_t* key, size_t keySize, COSE_Message *coseMessage);
+int cose_encrypt0_decrypt(COSE_Message *coseMessage, uint8_t* key, size_t keySize, uint8_t* buf, size_t bufSize);
 #endif

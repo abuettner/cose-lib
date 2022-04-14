@@ -29,6 +29,7 @@
 #include <cose-sign.h>
 #include <cose-lib.h>
 #include <cose-go.h>
+#include <cose-encrypt.h>
 
 #include "uECC.h"
 #include <openssl/sha.h>
@@ -41,7 +42,13 @@
 
 int main()
 {
+   /* const char* hexString = "aabbcc";
+    uint8_t buf[16];
+    int s = hexToBytes(hexString,strlen(hexString),buf,16);
+    printBufferToHex(stdout, buf, s);
 
+
+    
     // Generate key pair
     const struct uECC_Curve_t *curve = uECC_secp256r1();
     uint8_t private1[32];
@@ -92,9 +99,42 @@ int main()
     gcmTest();
 
     ecdsaTest();
+    
+    printf("\n");*/
 
+    uint8_t msgBuf[512];
+    COSE_Message message3;
+    uint8_t key[16];
+    generateRandomBytes(key,sizeof(key));
+    cose_encrypt0_encrypt(COSE_ENCRYPT_ALG_A256GCM, "hello", 5, key, sizeof(key), &message3);
+
+    int msgBufSize = cose_encode_message(message3,msgBuf, sizeof(msgBuf));
+
+
+
+    COSE_Message message4;
+    //const char keyHex[] = "d461c01ad6914e8779cab58a892682b86ee9bfe40ebbe822f383c1e18c32544e";
+    //const char enc0[] = "d08343a10103a204446b657931054c44a71ef7b84f47c833de2439581efa449a2c319573822901cfcdbe1f9df1ad56c27066e98b7e9cf39b358260";
+    
+   // uint8_t keyBytes[256];
+    //uint8_t enc0Bytes[256];
+    
+    //int keySize = hexToBytes(keyHex,strlen(keyHex),keyBytes,sizeof(keyBytes));
+    //int enc0Size = hexToBytes(enc0,strlen(enc0),enc0Bytes,sizeof(enc0Bytes));
+
+    cose_init_header(&message4.protectedHeader); 
+    cose_decode_message(msgBuf, msgBufSize, &message4);
+
+    uint8_t plainBuf[512];
+    int plainBufSize = cose_encrypt0_decrypt(&message4, key, sizeof(key),plainBuf,sizeof(plainBuf));
+    printf("\nDecrypt: (%d)\n",plainBufSize);
+    printf(plainBuf);
+    
+
+    ecdhTest();
+    
     return 0;
-}
+}/*
 
 void aesTest()
 {
@@ -135,12 +175,12 @@ void gcmTest()
     unsigned char tag[16];
 
     mbedtls_gcm_init(&gcm);
-    mbedtls_gcm_setkey(&gcm, MBEDTLS_CIPHER_ID_AES, key, 256);
+    mbedtls_gcm_setkey(&gcm, MBEDTLS_CIPHER_ID_AES, key, sizeof(key)*8);
     mbedtls_gcm_crypt_and_tag(&gcm, MBEDTLS_GCM_ENCRYPT, 16, iv, 16, NULL, 0, input, output, 16, tag);
     mbedtls_gcm_free(&gcm);
 
     mbedtls_gcm_init(&gcm);
-    mbedtls_gcm_setkey(&gcm, MBEDTLS_CIPHER_ID_AES, key, 256);
+    mbedtls_gcm_setkey(&gcm, MBEDTLS_CIPHER_ID_AES, key, sizeof(key)*8);
 
     int result;
     result = mbedtls_gcm_auth_decrypt(&gcm, 16, iv, 16, NULL, 0, tag, 16, output, plain);
@@ -148,9 +188,8 @@ void gcmTest()
     printf("\n");
     printf("%d\n", result);
     printf("%s\n", plain);
-    printf("%d\n", strlen(plain));
 }
-
+*/
 void ecdsaTest()
 {
 
@@ -184,7 +223,37 @@ void ecdsaTest()
     }
 }
 
+
 void ecdhTest()
 {
+    int ret;
+    mbedtls_entropy_context entropy;
+    mbedtls_ctr_drbg_context ctr_drbg;
 
+    mbedtls_ecdh_context ecdh;
+    mbedtls_ecdh_init(&ecdh);
+
+    mbedtls_mpi d;
+    mbedtls_mpi_init(&d);
+
+    mbedtls_ecp_point q;
+    mbedtls_ecp_point_init(&q);
+
+    
+    mbedtls_entropy_init(&entropy);
+    mbedtls_ctr_drbg_init(&ctr_drbg );
+    if ((ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy,
+                                     NULL,
+                                     0)) != 0)
+    {
+        printf(" failed\n  ! mbedtls_ctr_drbg_seed returned %d\n", ret);
+    }
+
+    mbedtls_ecdh_gen_public(&ecdh,&d,&q,mbedtls_ctr_drbg_random, &ctr_drbg);
+    
+    mbedtls_entropy_free(&entropy);
+    mbedtls_ctr_drbg_free(&ctr_drbg);
+    mbedtls_mpi_free(&d);
+    mbedtls_ecp_point_free(&q);
+    mbedtls_entropy_free(&entropy);
 }

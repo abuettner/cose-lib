@@ -29,6 +29,9 @@
 #include <cose-lib.h>
 #include <cose-encrypt.h>
 
+#include "mbedtls/gcm.h"
+#include "mbedtls/error.h"
+
 ssize_t convert_hex(uint8_t *dest, size_t count, const char *src)
 {
     size_t i;
@@ -40,53 +43,86 @@ ssize_t convert_hex(uint8_t *dest, size_t count, const char *src)
     return i;
 }
 
-ssize_t cose_encrypt0(COSE_ENCRYPT_ALG alg)
+size_t cose_create_enc0_struct(uint8_t *protectedBuf, size_t protectedBufSize, uint8_t *enc_struct_out, size_t enc_struct_out_size)
 {
-    /*uint8_t buf[512];
-    CborEncoder encoder, arrayEncoder;
-    cbor_encoder_init(&encoder, buf, sizeof(buf), 0);
-    cose_init_message(&encoder, &arrayEncoder, CborCOSE_Encrypt0Tag);
+    CborEncoder encStructEncoder, encStructArrayEncoder;
+    cbor_encoder_init(&encStructEncoder, enc_struct_out, enc_struct_out_size, 0);
+    cbor_encoder_create_array(&encStructEncoder, &encStructArrayEncoder, 3);
+    cbor_encode_text_string(&encStructArrayEncoder, "Encrypt0" , 8);
+    cbor_encode_byte_string(&encStructArrayEncoder, protectedBuf, protectedBufSize);
+    cbor_encode_byte_string(&encStructArrayEncoder, NULL , 0);
+    cbor_encoder_close_container(&encStructEncoder, &encStructArrayEncoder);
+    return cbor_encoder_get_buffer_size(&encStructEncoder, enc_struct_out);
+}
 
-    // * * * * * Protected * * * * * //
-    uint8_t ivBuf[26];
-    size_t ivLength = convert_hex(ivBuf, 26, "3030303130323033303430353036303730383039306130623063");
-    uint8_t protectedBuf[512];
-    CborEncoder protectedEncoder, protectedMapEncoder;
-    cbor_encoder_init(&protectedEncoder, protectedBuf, sizeof(protectedBuf), 0);
-    cbor_encoder_create_map(&protectedEncoder, &protectedMapEncoder, 2);
-    // Algorithm
-    cbor_encode_int(&protectedMapEncoder, COSE_HEADER_ALG);
-    cbor_encode_int(&protectedMapEncoder, 1);
-    // IV
-    cbor_encode_int(&protectedMapEncoder, COSE_HEADER_IV);
-    cbor_encode_byte_string(&protectedMapEncoder, ivBuf, ivLength);
-    cbor_encoder_close_container(&protectedEncoder, &protectedMapEncoder);
-    cose_create_protected_header(&arrayEncoder, protectedBuf, cbor_encoder_get_buffer_size(&protectedEncoder, protectedBuf));
 
-    // * * * * * Unprotected * * * * * //
-    CborEncoder unprotectedMapEncoder;
-    cbor_encoder_create_map(&arrayEncoder, &unprotectedMapEncoder, 1);
-    // KID
-    cbor_encode_int(&unprotectedMapEncoder, COSE_HEADER_KID);
-    cbor_encode_text_stringz(&unprotectedMapEncoder, "kid1");
-    cbor_encoder_close_container(&arrayEncoder, &unprotectedMapEncoder);
+int cose_encrypt0_encrypt(COSE_ENCRYPT_ALG alg, uint8_t* payload, size_t payloadSize, uint8_t* key, size_t keySize, COSE_Message *coseMessage)
+{
+    coseMessage->type = CborCOSE_Encrypt0Tag;
 
-    // cose_create_unprotected_header(&arrayEncoder);
+    // Protected header
+    cose_init_header(&coseMessage->protectedHeader);
 
-    // * * * * * Payload * * * * * //
-    uint8_t payloadBuf[35];
-    size_t payloadLength = convert_hex(payloadBuf, 35, "CCA3441A2464D240E09FE9EE0EA42A7852A4F41D9945325C1F8D3B1353B8EB83E6A62F");
-    cose_create_payload(&arrayEncoder, payloadBuf, payloadLength);
-    cose_close_message(&encoder, &arrayEncoder);
+    // -ALG
+    coseMessage->protectedHeader.alg = alg;
 
-    printf("Hex: ");
-    printBufferToHex(stdout, buf, cbor_encoder_get_buffer_size(&encoder, buf));
+    CborEncoder protectedEncoder;
+    cbor_encoder_init(&protectedEncoder, coseMessage->protectedHeaderRaw, sizeof(coseMessage->protectedHeaderRaw), 0);
+    cose_encode_header(coseMessage->protectedHeader, &protectedEncoder);
+    coseMessage->protectedHeaderRawSize = cbor_encoder_get_buffer_size(&protectedEncoder, coseMessage->protectedHeaderRaw);
 
-    printf("JSON: ");
+    // Unprotected header
+    cose_init_header(&coseMessage->unprotectedHeader);
+    // -IV
+    uint8_t iv[12];
+    generateRandomBytes(iv, 12);
 
-    CborParser parser;
-    CborValue value;
-    cbor_parser_init(buf, cbor_encoder_get_buffer_size(&encoder, buf), 0, &parser, &value);
-    printCBORToJSON(stdout, &value);*/
+    memmove(&coseMessage->unprotectedHeader.iv, iv, sizeof(iv));
+    coseMessage->unprotectedHeader.ivSize = sizeof(iv);
+
+    // -KID
+    memmove(coseMessage->unprotectedHeader.kid, "kid2", 4);
+    coseMessage->unprotectedHeader.kidSize = 4;
+
+    // Enc struct
+    uint8_t encStruct[64];
+    int encStructSize  = cose_create_enc0_struct(coseMessage->protectedHeaderRaw, coseMessage->protectedHeaderRawSize, encStruct, sizeof(encStruct));
+    
+    // Encrypt
+    mbedtls_gcm_context gcm;
+    uint8_t cipher[payloadSize+16];
+    uint8_t* tag = &cipher[payloadSize];
+    mbedtls_gcm_init(&gcm);
+    mbedtls_gcm_setkey(&gcm, MBEDTLS_CIPHER_ID_AES, key, keySize*8);
+    mbedtls_gcm_crypt_and_tag(&gcm, MBEDTLS_GCM_ENCRYPT, payloadSize, iv, sizeof(iv), encStruct, encStructSize, payload, cipher, 16, tag);
+    mbedtls_gcm_free(&gcm);
+
+    // Copy cipher to message payload
+    coseMessage->payloadSize = sizeof(cipher);
+    memmove(coseMessage->payload, cipher, sizeof(cipher));
+
     return 0;
+}
+int cose_encrypt0_decrypt(COSE_Message *coseMessage, uint8_t* key, size_t keySize, uint8_t* buf, size_t bufSize)
+{
+    uint8_t encStruct[64];
+    int encStructSize  = cose_create_enc0_struct(coseMessage->protectedHeaderRaw, coseMessage->protectedHeaderRawSize, encStruct, sizeof(encStruct));
+    
+    
+    // Check alg & key size
+
+    // Check if IV exists
+
+    // check (<payload size> - <tag size>) <= bufSize
+    
+    mbedtls_gcm_context gcm;
+    mbedtls_gcm_init(&gcm);
+    mbedtls_gcm_setkey(&gcm, MBEDTLS_CIPHER_ID_AES, key, keySize*8);
+    int ret = mbedtls_gcm_auth_decrypt(&gcm, coseMessage->payloadSize-16, coseMessage->unprotectedHeader.iv, coseMessage->unprotectedHeader.ivSize, encStruct, encStructSize, &coseMessage->payload[coseMessage->payloadSize-16], 16, coseMessage->payload, buf);
+    mbedtls_gcm_free(&gcm);
+    if(ret != 0) {
+        return -1;
+    }
+
+    return coseMessage->payloadSize-16;
 }

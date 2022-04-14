@@ -60,6 +60,7 @@ void cose_sign1_sign(uint8_t *payload, size_t payloadSize, const uint8_t *privat
     // * * * * * Signature * * * * * //
     uint8_t sig_struct[10 + coseMessage->protectedHeaderRawSize + coseMessage->payloadSize];
     size_t sig_struct_size = cose_create_sig_struct(coseMessage->protectedHeaderRaw, coseMessage->protectedHeaderRawSize, coseMessage->payload, coseMessage->payloadSize, sig_struct);
+    // @TODO: must be cbor encoded
     uECC_sign(privateKey, sig_struct, sig_struct_size, coseMessage->signature, curve);
 }
 
@@ -72,6 +73,7 @@ int cose_sign1_verify(COSE_Message *coseMessage, const uint8_t *publicKey, uECC_
         // Verify signature
         uint8_t sig_struct[10 + coseMessage->protectedHeaderRawSize + coseMessage->payloadSize];
         size_t sig_struct_size = cose_create_sig_struct(coseMessage->protectedHeaderRaw, coseMessage->protectedHeaderRawSize, coseMessage->payload, coseMessage->payloadSize, sig_struct);
+        // @TODO: must be cbor encoded
         return uECC_verify(publicKey, sig_struct, sig_struct_size, coseMessage->signature, curve);
     }
     return 0;

@@ -26,7 +26,13 @@
 
 #include <cbor.h>
 
+#include "mbedtls/ctr_drbg.h"
+#include "mbedtls/entropy.h"
+
+int generateRandomBytes(uint8_t *buf, size_t size);
+
 // Debugging functions
+size_t hexToBytes(char* hex, size_t hexSize, uint8_t* out, size_t outSize);
 void printCBORToJSON(FILE *f, CborValue *value);
 void printBufferToHex(FILE *f, uint8_t *buf, size_t count);
 

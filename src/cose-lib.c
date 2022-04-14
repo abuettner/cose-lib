@@ -25,6 +25,41 @@
 #include <cose-lib.h>
 #include <cborjson.h>
 
+
+int generateRandomBytes(uint8_t *buf, size_t size){
+    int ret = 1;
+    mbedtls_entropy_context entropy;
+    mbedtls_ctr_drbg_context ctr_drbg;
+
+    mbedtls_ctr_drbg_init(&ctr_drbg );
+    mbedtls_entropy_init(&entropy);
+    if ((ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy,
+                                     NULL,
+                                     0)) != 0)
+    {
+        return ret;
+    }
+    
+    ret = mbedtls_ctr_drbg_random(&ctr_drbg, buf, size);
+    mbedtls_ctr_drbg_free(&ctr_drbg );
+    mbedtls_entropy_free(&entropy);
+}
+
+
+size_t hexToBytes(char* hex, size_t hexSize, uint8_t* out, size_t outSize){
+    if(hexSize %2 != 0) {
+        return -1;
+    }
+    int size = 0;
+    char *pos = hex;
+    for (size_t count = 0; count < hexSize/2; count++) {
+        sscanf(pos, "%2hhx", &out[count]);
+        pos += 2;
+        size++;
+    }
+    return size;
+}
+
 void printCBORToJSON(FILE *f, CborValue *value)
 {
     cbor_value_to_json(f, value, CborConvertStringifyMapKeys);

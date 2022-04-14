@@ -69,6 +69,12 @@ int cose_encode_header(COSE_HEADER input, CborEncoder *encoder)
         cbor_encode_int(&mapEncoder, COSE_HEADER_KID);
         cbor_encode_byte_string(&mapEncoder, input.kid, input.kidSize);
     }
+    // IV
+    if (input.ivSize > 0)
+    {
+        cbor_encode_int(&mapEncoder, COSE_HEADER_IV);
+        cbor_encode_byte_string(&mapEncoder, input.iv, input.ivSize);
+    }
 
     // @TODO add other parameters
     cbor_encoder_close_container(encoder, &mapEncoder);
@@ -156,6 +162,17 @@ int cose_decode_header(CborValue *value, COSE_HEADER *out)
                             out->kidSize = kidSize;
                         }
                         break;
+                    case COSE_HEADER_IV:
+                        if (cbor_value_is_byte_string(&mapContainer))
+                        {
+                            uint8_t iv[64];
+                            size_t ivSize;
+                            cbor_value_calculate_string_length(&mapContainer, &ivSize);
+                            cbor_value_copy_byte_string(&mapContainer, iv, &ivSize, NULL);
+                            memmove(out->iv, iv, ivSize);
+                            out->ivSize = ivSize;
+                        }
+                        break;
                     default:
                         return 0;
                         break;
@@ -188,6 +205,7 @@ int cose_decode_message(uint8_t *input, size_t inputSize, COSE_Message *out)
                 cbor_value_get_array_length(&value, &arrayLength);
                 if (arrayLength > 2)
                 {
+                    
                     cbor_value_enter_container(&value, &arrayContainer);
 
                     // Protected header
