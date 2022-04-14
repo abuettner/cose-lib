@@ -12,22 +12,18 @@ INCLUDE += -I./include
 SOURCE += src/*.c
 SOURCE += micro-ecc/*.c
 
-MAIN += src/main/main.c
-
 TEST += src/test/test.c
 
 
 
 
-all: lib-cbor lib-mbedtls main examples #lib-cose
+all: lib-cbor lib-mbedtls examples #lib-cose
 	
 lib-cose:
 	$(CC) -Wall -fPIC -c $(SOURCE) $(INCLUDE)
 	$(CC) -shared -o lib/libcose.so ./*.o $(LIB) -ltinycbor -lmbedcrypto
 	rm ./*.o
 
-main: 
-	mkdir -p build && $(CC) -g -o build/main $(SOURCE) $(MAIN) $(LIB) $(INCLUDE) -ltinycbor -lmbedcrypto
 
 lib-cbor:
 	cd tinycbor/ && $(MAKE) clean && $(MAKE) LDFLAGS='' -j8 lib/libtinycbor.a
