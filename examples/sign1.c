@@ -21,14 +21,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  ******************************************************************************/
-#include <stdio.h>
-#include <cbor.h>
-#include <cborjson.h>
 
 #include <cose.h>
 #include <cose-lib.h>
 #include <cose-sign.h>
-
 #include "uECC.h"
 
 int main()

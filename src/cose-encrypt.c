@@ -30,7 +30,6 @@
 #include <cose-encrypt.h>
 
 #include "mbedtls/gcm.h"
-#include "mbedtls/error.h"
 
 ssize_t convert_hex(uint8_t *dest, size_t count, const char *src)
 {
