@@ -125,3 +125,52 @@ int cose_encrypt0_decrypt(COSE_Message *coseMessage, uint8_t* key, size_t keySiz
 
     return coseMessage->payloadSize-16;
 }
+
+/*int cose_encrypt_encrypt(COSE_ENCRYPT_ALG alg, uint8_t* payload, size_t payloadSize, COSE_Key keys[], int numKeys, COSE_Message *coseMessage)
+{
+    
+    coseMessage->type = CborCOSE_Encrypt0Tag;
+
+    // Protected header
+    cose_init_header(&coseMessage->protectedHeader);
+
+    // -ALG
+    coseMessage->protectedHeader.alg = alg;
+
+    CborEncoder protectedEncoder;
+    cbor_encoder_init(&protectedEncoder, coseMessage->protectedHeaderRaw, sizeof(coseMessage->protectedHeaderRaw), 0);
+    cose_encode_header(coseMessage->protectedHeader, &protectedEncoder);
+    coseMessage->protectedHeaderRawSize = cbor_encoder_get_buffer_size(&protectedEncoder, coseMessage->protectedHeaderRaw);
+
+    // Unprotected header
+    cose_init_header(&coseMessage->unprotectedHeader);
+    // -IV
+    uint8_t iv[12];
+    generateRandomBytes(iv, 12);
+
+    memmove(&coseMessage->unprotectedHeader.iv, iv, sizeof(iv));
+    coseMessage->unprotectedHeader.ivSize = sizeof(iv);
+
+    // -KID
+    memmove(coseMessage->unprotectedHeader.kid, "kid2", 4);
+    coseMessage->unprotectedHeader.kidSize = 4;
+
+    // Enc struct
+    uint8_t encStruct[64];
+    int encStructSize  = cose_create_enc0_struct(coseMessage->protectedHeaderRaw, coseMessage->protectedHeaderRawSize, encStruct, sizeof(encStruct));
+    
+    // Encrypt
+    mbedtls_gcm_context gcm;
+    uint8_t cipher[payloadSize+16];
+    uint8_t* tag = &cipher[payloadSize];
+    mbedtls_gcm_init(&gcm);
+    mbedtls_gcm_setkey(&gcm, MBEDTLS_CIPHER_ID_AES, key, keySize*8);
+    mbedtls_gcm_crypt_and_tag(&gcm, MBEDTLS_GCM_ENCRYPT, payloadSize, iv, sizeof(iv), encStruct, encStructSize, payload, cipher, 16, tag);
+    mbedtls_gcm_free(&gcm);
+
+    // Copy cipher to message payload
+    coseMessage->payloadSize = sizeof(cipher);
+    memmove(coseMessage->payload, cipher, sizeof(cipher));
+    
+    return 0;
+}*/

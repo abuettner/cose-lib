@@ -39,5 +39,9 @@ examples/sign1:
 examples/encrypt0: 
 	mkdir -p build/examples && $(CC) -g -o build/examples/encrypt0 examples/encrypt0.c $(SOURCE) $(LIB) $(INCLUDE) -ltinycbor -lmbedcrypto
 
+examples/encrypt0: 
+	mkdir -p build/examples && $(CC) -g -o build/examples/cosekey examples/cosekey.c $(SOURCE) $(LIB) $(INCLUDE) -ltinycbor -lmbedcrypto
+
+
 clean:
 	cd tinycbor && $(MAKE) clean && cd .. && cd mbedtls && $(MAKE) clean && cd .. && rm -rf build	

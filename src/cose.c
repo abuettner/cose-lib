@@ -95,6 +95,9 @@ size_t cose_encode_message(COSE_Message coseMessage, uint8_t *outBuf, int outBuf
     case CborCOSE_Sign1Tag:
         cbor_encoder_create_array(&encoder, &arrayEncoder, 4);
         break;
+    case CborCOSE_EncryptTag:
+        cbor_encoder_create_array(&encoder, &arrayEncoder, 4);
+        break;
     default:
         cbor_encoder_create_array(&encoder, &arrayEncoder, 3);
         break;
@@ -119,6 +122,12 @@ size_t cose_encode_message(COSE_Message coseMessage, uint8_t *outBuf, int outBuf
     if (coseMessage.type == CborCOSE_Sign1Tag)
     {
         cbor_encode_byte_string(&arrayEncoder, coseMessage.signature, sizeof(coseMessage.signature));
+    }
+
+    // * * * * * Recipient * * * * * //
+    if (coseMessage.type == CborCOSE_EncryptTag)
+    {
+        //...
     }
 
     cbor_encoder_close_container(&encoder, &arrayEncoder);

@@ -29,6 +29,14 @@
 #include "cose.h"
 #include "uECC.h"
 
+typedef enum
+{
+    COSE_SIGN_ALG_ES256 = -7,
+	COSE_SIGN_ALG_ES384 = -35,
+	COSE_SIGN_ALG_ES512 = -36
+} COSE_SIGN_ALG;
+
+
 /**
  * This function creates a sign1 cose message.
  * @param payload payload to be signed

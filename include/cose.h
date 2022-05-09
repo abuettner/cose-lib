@@ -51,6 +51,12 @@ typedef struct
 
 typedef struct
 {
+
+
+} COSE_RECIPIENT;
+
+typedef struct
+{
     CborTag type;
     uint8_t protectedHeaderRaw[128];
     size_t protectedHeaderRawSize;
@@ -59,6 +65,9 @@ typedef struct
     uint8_t payload[128];
     size_t payloadSize;
     uint8_t signature[64];
+    size_t recipientSize;
+    COSE_RECIPIENT *recipients;
+
 } COSE_Message;
 
 void cose_init_header(COSE_HEADER *);
