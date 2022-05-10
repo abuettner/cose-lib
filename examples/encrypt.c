@@ -29,6 +29,15 @@
 
 int main()
 {
+    printf("First example: \n");
+    example_encrypt();
+    printf("\nSecond example: \n");
+    example_external_data();
+    return 0;
+}
+
+void example_encrypt()
+{
     char *data = "Secret message";
 
     uint8_t kek1[16];
@@ -79,29 +88,51 @@ int main()
     int messageBufSize = cose_encode_message(messageSend, messageBuf, sizeof(messageBuf));
     printf("Encoded 1: ");
     printBufferToHex(stdout, messageBuf, messageBufSize);
-    
 
     // Decode message
     COSE_Message messageReceive;
     cose_decode_message(messageBuf, messageBufSize, &messageReceive);
 
-    /*
-    uint8_t messageBuf2[256];
-
-    printf("Encoded 2: ");
-    int messageBuf2Size = cose_encode_message(messageReceive, messageBuf2, sizeof(messageBuf2));
-    printBufferToHex(stdout, messageBuf2, messageBuf2Size);*/
-
-
     // Decrypt message
 
     uint8_t plain[strlen(data)];
     int l = cose_encrypt_decrypt(&messageReceive, &symKey2, plain, sizeof(plain));
-    printf("Result: %d\n", l);
     if (l > 0)
     {
         printf("Decrypted: %s\n", plain);
     }
+    else
+    {
+        printf("Could not decrypt");
+    }
+}
 
-    return 0;
+void example_external_data()
+{
+    // Test with go message example
+    const char *symKeyHex = "a5010402446b65793103010482030420500139a253ed25e0aa4482d416bc8fc331";
+    const char *coseMessageHex = "d8608443a10101a1054ccd822c8b34379ed60ec016815609addc02c0208115fa0791a2d07cbf1ebbb9bf3defb0838343a10101a204446b657931054c7e36c8a653828c0dc79f0a3258206a75049e42b972b8f9fe472ce1bb030daaf48521c22eca9e82ee2403ac111d5f8343a10101a204446b657932054c01a0bd8f4f13dc310f8e380158201be453f9b698c71bc3b4bb3ee086d281d404fb8907ebda082a4d243fa2133a9f8343a10101a204446b657933054ce856dd276f8b894c16fe0072582006b414ab2a4645d973e5b3360b6a163ae2dd0ba8ad782609b39a384a8fb35ab5";
+
+    uint8_t symKeyBuf[strlen(symKeyHex) / 2];
+    size_t symKeySize = hexToBytes(symKeyHex, strlen(symKeyHex), symKeyBuf, sizeof(symKeyBuf));
+
+    uint8_t coseMessageBuf[strlen(coseMessageHex) / 2];
+    size_t coseMessageSize = hexToBytes(coseMessageHex, strlen(coseMessageHex), coseMessageBuf, sizeof(coseMessageBuf));
+
+    COSE_Key sk;
+    cose_decode_key(symKeyBuf, symKeySize, &sk);
+
+    COSE_Message msg;
+    cose_decode_message(coseMessageBuf, coseMessageSize, &msg);
+
+    uint8_t plain2[24];
+    int l = cose_encrypt_decrypt(&msg, &sk, plain2, sizeof(plain2));
+    if (l > 0)
+    {
+        printf("Decrypted: %s\n", plain2);
+    }
+    else
+    {
+        printf("Could not decrypt");
+    }
 }

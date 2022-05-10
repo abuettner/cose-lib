@@ -31,6 +31,7 @@
 #include <cose-encrypt.h>
 
 #include "mbedtls/gcm.h"
+#include "mbedtls/error.h"
 
 ssize_t convert_hex(uint8_t *dest, size_t count, const char *src)
 {
@@ -331,6 +332,9 @@ int cose_encrypt_decrypt(COSE_Message *coseMessage, COSE_Key *key, uint8_t *buf,
     mbedtls_gcm_free(&gcm);
     if (ret != 0)
     {
+        uint8_t err[128];
+        mbedtls_strerror(ret,err, 128);
+        printf("%s\n",err);
         return -1;
     }
 

@@ -31,7 +31,7 @@ lib-cbor:
 lib-mbedtls:
 	cd mbedtls/ && $(MAKE) lib
 
-examples: examples/sign1 examples/encrypt0 examples/encrypt
+examples: examples/sign1 examples/encrypt0 examples/encrypt examples/cosekey
 
 examples/sign1: 
 	mkdir -p build/examples && $(CC) -g -o build/examples/sign1 examples/sign1.c $(SOURCE) $(LIB) $(INCLUDE) -ltinycbor -lmbedcrypto
