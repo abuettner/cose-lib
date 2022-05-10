@@ -1,26 +1,26 @@
 /******************************************************************************
-* MIT License
-* 
-* Copyright (c) 2021 Andre Büttner
-* 
-* Permission is hereby granted, free of charge, to any person obtaining a copy
-* of this software and associated documentation files (the "Software"), to deal
-* in the Software without restriction, including without limitation the rights
-* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-* copies of the Software, and to permit persons to whom the Software is
-* furnished to do so, subject to the following conditions:
-* 
-* The above copyright notice and this permission notice shall be included in all
-* copies or substantial portions of the Software.
-* 
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-* OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-* SOFTWARE.
-******************************************************************************/
+ * MIT License
+ *
+ * Copyright (c) 2021 Andre Büttner
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ ******************************************************************************/
 
 #include "cose.h"
 #include "cbor.h"
@@ -28,10 +28,7 @@
 
 void cose_init_header(COSE_HEADER *output)
 {
-    output->alg = 0;
-    output->contentType = NULL;
-    output->kidSize = 0;
-    output->ivSize = 0;
+    memset(output, 0, sizeof(COSE_HEADER));
 }
 
 int cose_header_size(COSE_HEADER input)
@@ -82,6 +79,29 @@ int cose_encode_header(COSE_HEADER input, CborEncoder *encoder)
     return 1;
 }
 
+int cose_encode_recipient(COSE_Recipient *recipient, CborEncoder *encoder)
+{
+    CborEncoder arrayEncoder;
+    cbor_encoder_create_array(encoder, &arrayEncoder, 3);
+
+    // * * * * * Protected * * * * * //
+    uint8_t protectedBuf[128];
+    CborEncoder protectedEncoder;
+    cbor_encoder_init(&protectedEncoder, protectedBuf, sizeof(protectedBuf), 0);
+    cose_encode_header(recipient->protectedHeader, &protectedEncoder);
+    size_t protectedBufSize = cbor_encoder_get_buffer_size(&protectedEncoder, protectedBuf);
+
+    cbor_encode_byte_string(&arrayEncoder, protectedBuf, protectedBufSize);
+
+    // * * * * * Unprotected * * * * * //
+    cose_encode_header(recipient->unprotectedHeader, &arrayEncoder);
+
+    // * * * * * Payload * * * * * //
+    cbor_encode_byte_string(&arrayEncoder, recipient->payload, recipient->payloadSize);
+
+    cbor_encoder_close_container(encoder, &arrayEncoder);
+}
+
 size_t cose_encode_message(COSE_Message coseMessage, uint8_t *outBuf, int outBufSize)
 {
     CborEncoder encoder, arrayEncoder;
@@ -127,7 +147,13 @@ size_t cose_encode_message(COSE_Message coseMessage, uint8_t *outBuf, int outBuf
     // * * * * * Recipient * * * * * //
     if (coseMessage.type == CborCOSE_EncryptTag)
     {
-        //...
+        CborEncoder recArrayEncoder;
+        cbor_encoder_create_array(&arrayEncoder, &recArrayEncoder, coseMessage.recipientNum);
+        for (int i = 0; i < coseMessage.recipientNum; i++)
+        {
+            cose_encode_recipient(&coseMessage.recipients[i], &recArrayEncoder);
+        }
+        cbor_encoder_close_container(&arrayEncoder, &recArrayEncoder);
     }
 
     cbor_encoder_close_container(&encoder, &arrayEncoder);
@@ -195,6 +221,60 @@ int cose_decode_header(CborValue *value, COSE_HEADER *out)
     return 0;
 }
 
+int cose_decode_recipient(CborValue *value, COSE_Recipient *recipient)
+{
+    CborValue arrayContainer;
+    if (cbor_value_is_valid(value))
+    {
+        if (cbor_value_is_array(value))
+        {
+            size_t arrayLength;
+            cbor_value_get_array_length(value, &arrayLength);
+            if (arrayLength >= 3)
+            {
+                cbor_value_enter_container(value, &arrayContainer);
+
+                // Protected header
+                if (cbor_value_is_byte_string(&arrayContainer))
+                {
+                    cbor_value_calculate_string_length(&arrayContainer, &recipient->protectedHeaderRawSize);
+                    cbor_value_copy_byte_string(&arrayContainer, recipient->protectedHeaderRaw, &recipient->protectedHeaderRawSize, NULL);
+                    CborParser protectedParser;
+                    CborValue protectedValue;
+                    cbor_parser_init(recipient->protectedHeaderRaw, recipient->protectedHeaderRawSize, 0, &protectedParser, &protectedValue);
+
+                    if (!cose_decode_header(&protectedValue, &recipient->protectedHeader))
+                    {
+                        return 0;
+                    }
+                }
+
+                cbor_value_advance(&arrayContainer);
+
+                // Unprotected header
+                if (cbor_value_is_map(&arrayContainer))
+                {
+                    if (!cose_decode_header(&arrayContainer, &recipient->unprotectedHeader))
+                    {
+                        return 0;
+                    }
+                }
+                cbor_value_advance(&arrayContainer);
+
+                // Payload
+                if (cbor_value_is_byte_string(&arrayContainer))
+                {
+                    cbor_value_calculate_string_length(&arrayContainer, &recipient->payloadSize);
+                    cbor_value_copy_byte_string(&arrayContainer, recipient->payload, &recipient->payloadSize, NULL);
+                }
+
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
 int cose_decode_message(uint8_t *input, size_t inputSize, COSE_Message *out)
 {
     CborParser parser;
@@ -214,7 +294,7 @@ int cose_decode_message(uint8_t *input, size_t inputSize, COSE_Message *out)
                 cbor_value_get_array_length(&value, &arrayLength);
                 if (arrayLength > 2)
                 {
-                    
+
                     cbor_value_enter_container(&value, &arrayContainer);
 
                     // Protected header
@@ -225,7 +305,7 @@ int cose_decode_message(uint8_t *input, size_t inputSize, COSE_Message *out)
                         CborParser protectedParser;
                         CborValue protectedValue;
                         cbor_parser_init(out->protectedHeaderRaw, out->protectedHeaderRawSize, 0, &protectedParser, &protectedValue);
-                       
+
                         if (!cose_decode_header(&protectedValue, &out->protectedHeader))
                         {
                             return 0;
@@ -253,11 +333,37 @@ int cose_decode_message(uint8_t *input, size_t inputSize, COSE_Message *out)
                     cbor_value_advance(&arrayContainer);
 
                     // Signature
-                    if (out->type == CborCOSE_Sign1Tag && arrayLength == 4)
+                    if (out->type == CborCOSE_Sign1Tag && (arrayLength == 4 || arrayLength == 5))
                     {
                         size_t s;
                         cbor_value_calculate_string_length(&arrayContainer, &s);
                         cbor_value_copy_byte_string(&arrayContainer, out->signature, &s, NULL);
+                    }
+
+                    // TODO multi signature CborCOSE_SignTag with arrayLength == 5
+
+                    if (out->type == CborCOSE_EncryptTag && arrayLength == 4)
+                    {
+                        if (cbor_value_is_array(&arrayContainer))
+                        {
+                            CborValue recArrayContainer;
+                            size_t recArrayLength;
+                            cbor_value_get_array_length(&arrayContainer, &recArrayLength);
+                            if (recArrayLength > 0)
+                            {
+                                cbor_value_enter_container(&arrayContainer, &recArrayContainer);
+                                for (int i = 0; i < recArrayLength; i++)
+                                {
+                                    if (!cose_decode_recipient(&recArrayContainer, &out->recipients[i]))
+                                    {
+                                        return 0;
+                                    }
+                                    cbor_value_advance(&recArrayContainer);
+                                }
+
+                                out->recipientNum = recArrayLength;
+                            }
+                        }
                     }
                     return 1;
                 }

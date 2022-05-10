@@ -17,7 +17,7 @@ TEST += src/test/test.c
 
 
 
-all: lib-cbor lib-mbedtls examples #lib-cose
+all: lib-cbor lib-mbedtls examples/* #lib-cose
 	
 lib-cose:
 	$(CC) -Wall -fPIC -c $(SOURCE) $(INCLUDE)
@@ -31,7 +31,7 @@ lib-cbor:
 lib-mbedtls:
 	cd mbedtls/ && $(MAKE) lib
 
-examples: examples/sign1 examples/encrypt0
+examples: examples/sign1 examples/encrypt0 examples/encrypt
 
 examples/sign1: 
 	mkdir -p build/examples && $(CC) -g -o build/examples/sign1 examples/sign1.c $(SOURCE) $(LIB) $(INCLUDE) -ltinycbor -lmbedcrypto
@@ -39,7 +39,10 @@ examples/sign1:
 examples/encrypt0: 
 	mkdir -p build/examples && $(CC) -g -o build/examples/encrypt0 examples/encrypt0.c $(SOURCE) $(LIB) $(INCLUDE) -ltinycbor -lmbedcrypto
 
-examples/encrypt0: 
+examples/encrypt: 
+	mkdir -p build/examples && $(CC) -g -o build/examples/encrypt examples/encrypt.c $(SOURCE) $(LIB) $(INCLUDE) -ltinycbor -lmbedcrypto
+
+examples/cosekey: 
 	mkdir -p build/examples && $(CC) -g -o build/examples/cosekey examples/cosekey.c $(SOURCE) $(LIB) $(INCLUDE) -ltinycbor -lmbedcrypto
 
 

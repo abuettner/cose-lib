@@ -1,26 +1,26 @@
 /******************************************************************************
-* MIT License
-* 
-* Copyright (c) 2021 Andre Büttner
-* 
-* Permission is hereby granted, free of charge, to any person obtaining a copy
-* of this software and associated documentation files (the "Software"), to deal
-* in the Software without restriction, including without limitation the rights
-* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-* copies of the Software, and to permit persons to whom the Software is
-* furnished to do so, subject to the following conditions:
-* 
-* The above copyright notice and this permission notice shall be included in all
-* copies or substantial portions of the Software.
-* 
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-* OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-* SOFTWARE.
-******************************************************************************/
+ * MIT License
+ *
+ * Copyright (c) 2021 Andre Büttner
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ ******************************************************************************/
 
 #ifndef COSE_H
 #define COSE_H
@@ -49,11 +49,27 @@ typedef struct
 
 } COSE_HEADER;
 
+/*typedef struct
+{
+    uint8_t protectedHeaderRaw[128];
+    size_t protectedHeaderRawSize;
+    COSE_HEADER protectedHeader;
+    COSE_HEADER unprotectedHeader;
+    uint8_t payload[128];
+    size_t payloadSize;
+
+} COSE_Recipient;*/
+
 typedef struct
 {
+    uint8_t protectedHeaderRaw[128];
+    size_t protectedHeaderRawSize;
+    COSE_HEADER protectedHeader;
+    COSE_HEADER unprotectedHeader;
+    uint8_t payload[128];
+    size_t payloadSize;
 
-
-} COSE_RECIPIENT;
+} COSE_Recipient;
 
 typedef struct
 {
@@ -65,8 +81,8 @@ typedef struct
     uint8_t payload[128];
     size_t payloadSize;
     uint8_t signature[64];
-    size_t recipientSize;
-    COSE_RECIPIENT *recipients;
+    COSE_Recipient recipients[10];
+    int recipientNum;
 
 } COSE_Message;
 

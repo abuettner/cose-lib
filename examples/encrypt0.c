@@ -37,7 +37,7 @@ int main()
 
     // Encrypt message
     COSE_Message messageSend;
-    cose_encrypt0_encrypt(COSE_ENCRYPT_ALG_A256GCM, data, strlen(data), key, sizeof(key), &messageSend);
+    cose_encrypt0_encrypt(COSE_ENCRYPT_ALG_A256GCM, data, strlen(data), key, sizeof(key), "kid1", 4,&messageSend);
 
     // Encode message
     uint8_t messageBuf[128];
