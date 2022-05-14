@@ -26,13 +26,27 @@
 #include <cose-key.h>
 #include <cose-lib.h>
 #include <cose-encrypt.h>
+#include <mbedtls/hkdf.h>
+#include <mbedtls/error.h>
 
 int main()
 {
-    printf("First example: \n");
+
+
+    uint8_t kek1[32];
+    generateRandomBytes(kek1, sizeof(kek1));
+
+    uint8_t dk[16] = {0};
+    int ret = mbedtls_hkdf(mbedtls_md_info_from_type(MBEDTLS_MD_SHA256),NULL,0,kek1,sizeof(kek1),NULL,0,dk,16);
+    
+    uint8_t err[128];
+    mbedtls_strerror(ret,err, sizeof(err));
+    printf("%s\n",err);
+    printBufferToHex(stdout,dk,sizeof(dk));
+    /*printf("First example: \n");
     example_encrypt();
     printf("\nSecond example: \n");
-    example_external_data();
+    example_external_data();*/
     return 0;
 }
 
@@ -40,18 +54,18 @@ void example_encrypt()
 {
     char *data = "Secret message";
 
-    uint8_t kek1[16];
+    uint8_t kek1[32];
     generateRandomBytes(kek1, sizeof(kek1));
 
-    uint8_t kek2[16];
+    uint8_t kek2[32];
     generateRandomBytes(kek2, sizeof(kek2));
-    uint8_t kek3[16];
+    uint8_t kek3[32];
     generateRandomBytes(kek3, sizeof(kek3));
 
     COSE_Key symKey1;
     cose_init_key(&symKey1);
     symKey1.kty = COSE_KEY_TYPE_Symmetric;
-    symKey1.alg = COSE_ENCRYPT_ALG_A128GCM;
+    symKey1.alg = COSE_ENCRYPT_ALG_A256GCM;
     memcpy(symKey1.kid, "kidFirst", 8);
     symKey1.kidSize = 8;
     memcpy(symKey1.k, kek1, sizeof(kek1));
@@ -60,7 +74,7 @@ void example_encrypt()
     COSE_Key symKey2;
     cose_init_key(&symKey2);
     symKey2.kty = COSE_KEY_TYPE_Symmetric;
-    symKey2.alg = COSE_ENCRYPT_ALG_A128GCM;
+    symKey2.alg = COSE_ENCRYPT_ALG_A256GCM;
     memcpy(symKey2.kid, "kidSecond", 9);
     symKey2.kidSize = 9;
     memcpy(symKey2.k, kek2, sizeof(kek2));
@@ -69,7 +83,7 @@ void example_encrypt()
     COSE_Key symKey3;
     cose_init_key(&symKey3);
     symKey3.kty = COSE_KEY_TYPE_Symmetric;
-    symKey3.alg = COSE_ENCRYPT_ALG_A128GCM;
+    symKey3.alg = COSE_ENCRYPT_ALG_A256GCM;
     memcpy(symKey3.kid, "kidNew", 6);
     symKey3.kidSize = 9;
     memcpy(symKey3.k, kek3, sizeof(kek3));
@@ -81,7 +95,7 @@ void example_encrypt()
 
     // Encrypt message
     COSE_Message messageSend;
-    cose_encrypt_encrypt(COSE_ENCRYPT_ALG_A128GCM, data, strlen(data), recipientKeys, 2, &messageSend);
+    cose_encrypt_encrypt(COSE_ENCRYPT_ALG_A192GCM, data, strlen(data), recipientKeys, 2, &messageSend);
 
     // Encode message
     uint8_t messageBuf[256];

@@ -65,7 +65,7 @@ typedef enum
 typedef struct
 {
     int kty;
-    uint8_t kid[12];
+    uint8_t kid[16];
     size_t kidSize;
     int alg;
     int keyOps[10];

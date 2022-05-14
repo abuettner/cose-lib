@@ -260,9 +260,17 @@ int cose_encrypt_encrypt(COSE_ENCRYPT_ALG alg, uint8_t *payload, size_t payloadS
     // TODO: Change to enc_struct
     int encStructSize = cose_create_enc_struct(coseMessage->protectedHeaderRaw, coseMessage->protectedHeaderRawSize, encStruct, sizeof(encStruct));
 
-    if (alg == COSE_ENCRYPT_ALG_A128GCM)
+    if (alg == COSE_ENCRYPT_ALG_A128GCM || alg == COSE_ENCRYPT_ALG_A192GCM || alg == COSE_ENCRYPT_ALG_A256GCM)
     {
-        uint8_t cek[16];
+        int keySize = 0;
+        if(alg == COSE_ENCRYPT_ALG_A128GCM){
+            keySize = 16;
+        } else if(alg == COSE_ENCRYPT_ALG_A192GCM){
+            keySize = 24;
+        } else {
+            keySize = 32;
+        }
+        uint8_t cek[keySize];
         generateRandomBytes(cek, sizeof(cek));
         // Encrypt
         mbedtls_gcm_context gcm;
@@ -302,19 +310,31 @@ int cose_encrypt_encrypt(COSE_ENCRYPT_ALG alg, uint8_t *payload, size_t payloadS
 
 int cose_encrypt_decrypt(COSE_Message *coseMessage, COSE_Key *key, uint8_t *buf, size_t bufSize)
 {
-    uint8_t cek[16] = {0};
+    int keySize = 0;
+    if(coseMessage->protectedHeader.alg == COSE_ENCRYPT_ALG_A128GCM){
+        keySize = 16;
+    } else if(coseMessage->protectedHeader.alg == COSE_ENCRYPT_ALG_A192GCM){
+        keySize = 24;
+    } else if(coseMessage->protectedHeader.alg == COSE_ENCRYPT_ALG_A256GCM){
+        keySize = 32;
+    }
+    uint8_t cek[keySize];
+    
     // Check if key id matches with one of the recipients:
-    for(int i = 0; i < coseMessage->recipientNum; i++){
-        if(coseMessage->recipients[i].unprotectedHeader.kidSize > 0 && coseMessage->recipients[i].unprotectedHeader.kidSize == key->kidSize && memcmp(coseMessage->recipients[i].unprotectedHeader.kid, key->kid, key->kidSize) == 0) {
-            if(cose_encrypt_recipient_decrypt_aes_gcm(&coseMessage->recipients[i],key, cek, sizeof(cek))){
+    for (int i = 0; i < coseMessage->recipientNum; i++)
+    {
+        if (coseMessage->recipients[i].unprotectedHeader.kidSize > 0 && coseMessage->recipients[i].unprotectedHeader.kidSize == key->kidSize && memcmp(coseMessage->recipients[i].unprotectedHeader.kid, key->kid, key->kidSize) == 0)
+        {
+            if (cose_encrypt_recipient_decrypt_aes_gcm(&coseMessage->recipients[i], key, cek, sizeof(cek)))
+            {
                 break;
             }
         }
-        if(i == coseMessage->recipientNum-1){
+        if (i == coseMessage->recipientNum - 1)
+        {
             return -1; // no matching key found
         }
     }
-
 
     uint8_t encStruct[64];
     int encStructSize = cose_create_enc_struct(coseMessage->protectedHeaderRaw, coseMessage->protectedHeaderRawSize, encStruct, sizeof(encStruct));
@@ -333,8 +353,8 @@ int cose_encrypt_decrypt(COSE_Message *coseMessage, COSE_Key *key, uint8_t *buf,
     if (ret != 0)
     {
         uint8_t err[128];
-        mbedtls_strerror(ret,err, 128);
-        printf("%s\n",err);
+        mbedtls_strerror(ret, err, 128);
+        printf("%s\n", err);
         return -1;
     }
 
